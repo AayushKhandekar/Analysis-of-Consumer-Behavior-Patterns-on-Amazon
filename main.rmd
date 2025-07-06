@@ -1,0 +1,219 @@
+---
+title: "Analysis of Consumer Behavior Pattern on Amazon"
+author: "Aayush Khandekar"
+date: "2023-11-17"
+output: html_document
+---
+
+Import Library
+
+```{r}
+
+library(dplyr)
+library(readr)
+library(data.table)
+library(ggplot2)
+library(corrplot)
+
+```
+
+Import Dataset
+
+```{r}
+
+data <- read_csv("Amazon-Customer-Behavior-Survey.csv", show_col_types = "FALSE")
+
+```
+
+Rename Columns
+
+```{r}
+
+setnames(data, old = c('age','Personalized_Recommendation_Frequency...6','Personalized_Recommendation_Frequency...18'), new = c('Age','Personalized_Recommendation_Frequency_6','Personalized_Recommendation_Frequency_18'))
+
+```
+
+Column 'Gender'
+
+```{r}
+
+unique(data$Gender)
+
+```
+
+### Online Shopping by Gender Statistics
+
+Each row in the dataset represents a unique transaction. Statistically, 58% of online purchases are done by females while 23% of online purchases are done by males.
+
+```{r}
+
+table(data$Gender)
+
+female_percentage <- 100*352/nrow(data)
+male_percentage <- 100*142/nrow(data)
+other_percentage <- 100*19/nrow(data)
+prefer_not_to_say_percentage <- 100*89/nrow(data)
+
+sprintf("Female Percentage : %f", female_percentage)
+sprintf("Male Percentage : %f", male_percentage)
+sprintf("Others Percentage : %f", other_percentage)
+sprintf("Prefer Not to Say Percentage : %f", prefer_not_to_say_percentage)
+
+```
+
+### Visualizing Age
+
+Age group 20 to 25 years make the most online purchases.
+
+```{r}
+
+jpeg(file="visualizing-age-1.jpeg")
+
+hist(data$Age, main = "Age Distribution", xlab = "Age", ylab = "Purchase Count", breaks = 10, col = "steelblue")
+
+dev.off()
+```
+
+Descriptive Statistics:
+
+The age range of online customers spans from 3 to 67 years. The first quartile (25th percentile) falls at 23 years, and the third quartile (75th percentile) falls at 36 years. The average age (mean) of customers is 30.79 years, while the median age (50th percentile) is 26 years.
+
+Similarly, The average rating given by customers for the reviews is 2.48, with a median rating of 3. The first quartile (25th percentile) of ratings is 1, and the third quartile (75th percentile) is 3, as anticipated.
+
+```{r}
+
+summary(data)
+
+```
+
+Encoding the values
+
+```{r}
+
+encoded_values <- factor(data$Purchase_Frequency, levels = c("Less than once a month", "Once a month", "Few times a month", "Once a week", "Multiple times a week"))
+
+data$Purchase_Frequency_Encode <- as.numeric(encoded_values)
+
+```
+
+Visualizing Distributions of discrete variable: Purchase Frequency
+
+Encoding Representation:
+
+1 represents "Less than once a month" 2 represents "Once a month" 3 represents "Few times a month" 4 represents "Once a week" 5 represents "Multiple times a week"
+
+Data Distribution Analysis:
+
+203 customers made purchases "Few times a month," followed by 124 customers who made purchases "Less than once a month." This count is close to the number of customers, which is equivalent to those who made purchases "Once a week." There are only 56 customers who made purchases "Multiple times a week."
+
+```{r}
+
+jpeg(file="purchase-frequency.jpeg")
+
+hist(data$Purchase_Frequency_Encode, main = "Purchase Frequency", xlab = "Frequency", ylab = "Count", col = "steelblue")
+
+dev.off()
+
+```
+
+Generating Frequency Count
+
+```{r}
+
+purchase_frequency_count <- table(data$Purchase_Frequency_Encode)
+
+print(purchase_frequency_count)
+
+```
+
+```{r}
+
+jpeg(file="purchase-frequency-boxplot.jpeg")
+
+boxplot(data$Purchase_Frequency_Encode, main = "Boxplot of Purchase Frequency", xlab = "Purchase Frequency Encoded", col = "steelblue")
+
+dev.off()
+
+```
+
+```{r}
+
+colnames(data)
+
+```
+
+Correlation Matrix
+
+1.  Age and Purchase_Frequency_Encode (0.0917):
+
+There is a weak positive correlation (0.0917) between a customer's age and their purchase frequency encoding. This suggests a slight tendency for older customers to have a slightly higher frequency of purchases encoded.
+
+2.  Age and Shopping_Satisfaction (0.0039):
+
+There appears to be an almost negligible positive correlation (0.0039) between a customer's age and their shopping satisfaction. This correlation is very close to zero, indicating almost no linear relationship between a customer's age and their satisfaction level while shopping.
+
+3.  Age and Rating_Accuracy (-0.0102):
+
+The correlation between age and rating accuracy is negative but extremely close to zero (-0.0102), indicating almost no linear relationship between a customer's age and the accuracy of their ratings.
+
+4.  Purchase_Frequency_Encode and Shopping_Satisfaction (0.0343):
+
+There is a very weak positive correlation (0.0343) between a customer's purchase frequency encoding and their shopping satisfaction. This suggests a slight tendency for customers who make purchases more frequently (as encoded) to have slightly higher satisfaction levels while shopping.
+
+5.  Purchase_Frequency_Encode and Rating_Accuracy (-0.0569):
+
+A weak negative correlation (-0.0569) exists between a customer's purchase frequency encoding and their rating accuracy. This implies that customers with a higher purchase frequency encoded tend to provide slightly less accurate ratings.
+
+6.  Shopping_Satisfaction and Rating_Accuracy (0.5140):
+
+There is a moderate positive correlation (0.5140) between shopping satisfaction and rating accuracy. This suggests that customers who are more satisfied with their shopping experience tend to provide more accurate ratings.
+
+```{r}
+
+jpeg(file="correlation-matrix.jpeg")
+
+selected_columns <- data[, c("Age", "Purchase_Frequency_Encode", 
+                            "Shopping_Satisfaction",
+                           "Rating_Accuracy")]
+
+correlation_matrix <- cor(selected_columns)
+
+corrplot(correlation_matrix, method = "color", type = "upper", order = "hclust", 
+         tl.col = "black", tl.srt = 45)
+
+dev.off()
+
+```
+
+```{r}
+
+print(correlation_matrix)
+
+```
+
+Changing datatype of Timestamp column from char to Date
+
+```{r}
+
+data$Timestamp <- as.character(data$Timestamp)  # Ensure Timestamp column is in character format
+
+# Remove the GMT offset from the Timestamp column
+data$Timestamp <- gsub(" GMT\\+5:30", "", data$Timestamp)
+
+data$Timestamp <- as.Date(as.POSIXct(data$Timestamp, format = "%Y/%m/%d %I:%M:%S %p"))
+
+```
+
+```{r}
+
+write.csv(data, "data.csv", row.names=FALSE)
+
+```
+
+```{r}
+
+encoded_values <- factor(data$Personalized_Recommendation_Frequency_6, levels = c("Yes", "No", "Sometimes"))
+
+data$Personalized_Recommendation_Frequency_6_Encode <- as.numeric(encoded_values)
+
+```
